@@ -13,7 +13,7 @@
 
 Most people never think about where their files live. Shelby Grow changes that.
 
-Inspired by how Duolingo turned language learning into a daily ritual, **Shelby Grow turns file storage into a game** — with real stakes and real rewards. Every upload is a move in a larger game. Every day you store something, your streak grows. Every file plants a seed in your garden.
+Inspired by how Duolingo turned language learning into a daily ritual, **Shelby Grow turns file storage into a game** - with real stakes and real rewards. Every upload is a move in a larger game. Every day you store something, your streak grows. Every file plants a seed in your garden.
 
 This isn't just a UI on top of a storage protocol. It's a behavior design system that turns Shelby's infrastructure into something people genuinely want to use every day.
 
@@ -25,13 +25,13 @@ This isn't just a UI on top of a storage protocol. It's a behavior design system
 Upload at least one file per day to keep your streak alive. Miss a day and it resets to zero. Simple, addictive, and it drives consistent recurring activity on the Shelby network.
 
 ### 🌱 Storage Garden
-Every file you upload grows a plant in your personal garden. Small files grow bushes. Large files grow trees. Your garden is a living, visual representation of your entire storage history on Shelby — permanently recorded on-chain.
+Every file you upload grows a plant in your personal garden. Small files grow bushes. Large files grow trees. Your garden is a living, visual representation of your entire storage history on Shelby - permanently recorded on-chain.
 
 ### 🗺️ Daily Quests
 Each day brings different upload challenges: upload an image, upload a file over 1MB, upload 3 files in one session. Completing quests earns XP, unlocks badges, and keeps the experience fresh across every session.
 
 ### 🏆 Storage Wars
-A weekly leaderboard where users compete for who uploads the most data. Resets every Monday. Turns individual usage into community competition — the kind of thing people screenshot and share.
+A weekly leaderboard where users compete for who uploads the most data. Resets every Monday. Turns individual usage into community competition - the kind of thing people screenshot and share.
 
 ---
 
@@ -142,13 +142,13 @@ When Shelby early access is active, every upload in Shelby Grow:
 3. Processes storage payment through Shelby's micropayment channels
 4. Confirms blob as "written" via smart contract state
 
-Streaks and leaderboard scores are stored as permanent on-chain records — every game interaction becomes a real Shelby network event.
+Streaks and leaderboard scores are stored as permanent on-chain records every game interaction becomes a real Shelby network event.
 
 ---
 
 ## 🗺️ Roadmap
 
-- [x] Browser prototype (single HTML — all 4 mechanics)
+- [x] Browser prototype (single HTML - all 4 mechanics)
 - [ ] Next.js project scaffold
 - [ ] Petra wallet connect
 - [ ] Shelby SDK upload integration
@@ -161,4 +161,4 @@ Streaks and leaderboard scores are stored as permanent on-chain records — ever
 
 ## 📄 License
 
-MIT — built with ❤️ on Shelby Protocol.
+MIT - built with ❤️ on Shelby Protocol.
