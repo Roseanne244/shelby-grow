@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS Variables ─────────────────────────────────────────────────────────── */
+:root {
+  --bg:       #0c0e14;
+  --surface:  #13151f;
+  --card:     #181b27;
+  --border:   #252840;
+  --orange:   #ff6a00;
+  --orange2:  #ff9a3c;
+  --green:    #00e87a;
+  --blue:     #4f8aff;
+  --purple:   #a855f7;
+  --text:     #e8eaf0;
+  --muted:    #6b7280;
+  --white:    #ffffff;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Custom Scrollbar ──────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--orange);
+}
+
+/* ── Utility Classes ───────────────────────────────────────────────────────── */
+@layer utilities {
+  .text-orange { color: var(--orange); }
+  .text-muted  { color: var(--muted); }
+  .bg-surface  { background-color: var(--surface); }
+  .bg-card     { background-color: var(--card); }
+  .border-subtle { border-color: var(--border); }
+
+  .glow-orange {
+    box-shadow: 0 0 20px rgba(255, 106, 0, 0.3);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+/* ── Animations ────────────────────────────────────────────────────────────── */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 106, 0, 0.3); }
+  50%       { box-shadow: 0 0 20px rgba(255, 106, 0, 0.6); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+
+@keyframes streak-flame {
+  0%, 100% { transform: scale(1) rotate(-2deg); }
+  50%       { transform: scale(1.05) rotate(2deg); }
+}
+
+.animate-pulse-glow { animation: pulse-glow 2s infinite; }
+.animate-float      { animation: float 3s ease-in-out infinite; }
+.animate-flame      { animation: streak-flame 0.8s ease-in-out infinite; }
