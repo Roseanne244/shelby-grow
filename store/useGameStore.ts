@@ -1,190 +1,136 @@
-/**
- * useGameStore.ts
- *
- * Central Zustand store for all game state:
- * streak, XP, level, quests, badges, and garden.
- *
- * Persisted to localStorage so state survives page refreshes.
- * When Shelby SDK is integrated, streak + scores will also
- * be written to Shelby Storage as permanent on-chain records.
- */
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import type { GameState, QuestProgress, Badge, BadgeId } from '@/types'
-import { QUESTS } from '@/lib/quests'
-import { BADGES } from '@/lib/badges'
+export type FileCategory =
+  | 'creative'
+  | 'study'
+  | 'photo'
+  | 'video'
+  | 'document'
+  | 'audio'
+  | 'other';
 
-// ─── XP thresholds per level ──────────────────────────────────────────────────
-export function getXPForLevel(level: number): number {
-  return level * 100
+export interface UploadRecord {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  category: FileCategory;
+  blobName: string;
+  address: string;
+  uploadedAt: number;
+  mimeType: string;
+  previewDataUrl?: string;
 }
 
-// ─── Store Interface ──────────────────────────────────────────────────────────
-
-interface GameStore extends GameState {
-  // Quest state
-  todayQuestProgress: QuestProgress[]
-  unlockedBadges: Badge[]
-
-  // Actions
-  recordUpload: (params: { fileCount: number; hasImage: boolean; totalSizeBytes: number }) => void
-  addXP: (amount: number) => void
-  checkAndCompleteQuests: () => void
-  checkAndUnlockBadges: () => void
-  resetDailyState: () => void
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlockedAt?: number;
 }
 
-// ─── Store ────────────────────────────────────────────────────────────────────
+interface GameState {
+  xp: number;
+  streak: number;
+  lastUploadDate: string | null;
+  uploads: UploadRecord[];
+  badges: Badge[];
 
-export const useGameStore = create<GameStore>()(
+  addXP: (amount: number) => void;
+  recordUpload: (record: UploadRecord) => void;
+  unlockBadge: (badgeId: string) => void;
+  updateStreak: () => void;
+  getLevel: () => number;
+  getXPForNextLevel: () => number;
+}
+
+const INITIAL_BADGES: Badge[] = [
+  { id: 'pioneer',    name: 'Pioneer',      description: 'One of the first to archive on Shelby',  icon: '🚀' },
+  { id: 'creator',    name: 'Creator',       description: 'Archived creative work on-chain',         icon: '🎨' },
+  { id: 'scholar',    name: 'Scholar',       description: 'Backed up study materials forever',       icon: '🎓' },
+  { id: 'consistent', name: 'Consistent',    description: 'Maintained a 7-day streak',               icon: '🔥' },
+  { id: 'archivist',  name: 'Archivist',     description: 'Archived 5 files on Shelby',              icon: '🗂️' },
+  { id: 'vault',      name: 'Vault Master',  description: 'Archived 20 files on Shelby',             icon: '🏛️' },
+  { id: 'sharer',     name: 'Proof Sender',  description: 'Shared on-chain proof of ownership',      icon: '🔗' },
+];
+
+function getLevel(xp: number): number {
+  return Math.floor(Math.sqrt(xp / 100)) + 1;
+}
+
+function getXPForNextLevel(xp: number): number {
+  const level = getLevel(xp);
+  return level * level * 100;
+}
+
+export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
-      // ── Initial State ──────────────────────────────────────────────────────
+      xp: 0,
       streak: 0,
-      bestStreak: 0,
       lastUploadDate: null,
-      totalFiles: 0,
-      totalXP: 0,
-      level: 1,
-      weeklyUploads: 0,
-      weeklyXP: 0,
-      todayUploads: 0,
-      todayImages: 0,
-      questsCompleted: 0,
-      gardenAge: 0,
-      streakHistory: [],
-      todayQuestProgress: [],
-      unlockedBadges: [
-        // Early adopter badge — everyone who uses the app gets this
-        { ...BADGES.find(b => b.id === 'early_adopter')!, unlockedAt: new Date().toISOString() },
-      ],
+      uploads: [],
+      badges: INITIAL_BADGES,
 
-      // ── Actions ────────────────────────────────────────────────────────────
+      getLevel: () => getLevel(get().xp),
+      getXPForNextLevel: () => getXPForNextLevel(get().xp),
 
-      recordUpload: ({ fileCount, hasImage, totalSizeBytes }) => {
-        const state = get()
-        const today = new Date().toDateString()
-        const yesterday = new Date(Date.now() - 86400000).toDateString()
+      addXP: (amount) => set((state) => ({ xp: state.xp + amount })),
 
-        // Update streak
-        let newStreak = state.streak
-        if (state.lastUploadDate !== today) {
-          if (state.lastUploadDate === yesterday) {
-            newStreak = state.streak + 1
-          } else {
-            newStreak = 1
-          }
-        }
+      recordUpload: (record) => {
+        const state = get();
+        const uploads = [record, ...state.uploads];
+        set({ uploads });
 
-        // Calculate XP for this upload
-        const baseXP = 10 * fileCount
-        const sizeXP = Math.floor(totalSizeBytes / 102400)
-        const xpGained = baseXP + sizeXP
+        let xpGained = 50; // base XP per upload
 
-        // Update streak history
-        const todayHistory = { date: today, uploaded: true, filesCount: fileCount }
-        const existingHistory = state.streakHistory.filter(h => h.date !== today)
+        // Unlock badges based on category & total uploads
+        let badges = [...state.badges];
+        const unlock = (id: string) => {
+          badges = badges.map((b) =>
+            b.id === id && !b.unlockedAt ? { ...b, unlockedAt: Date.now() } : b
+          );
+        };
 
-        set({
-          streak: newStreak,
-          bestStreak: Math.max(newStreak, state.bestStreak),
-          lastUploadDate: today,
-          totalFiles: state.totalFiles + fileCount,
-          weeklyUploads: state.weeklyUploads + fileCount,
-          todayUploads: state.todayUploads + fileCount,
-          todayImages: state.todayImages + (hasImage ? 1 : 0),
-          gardenAge: state.gardenAge + 1,
-          streakHistory: [...existingHistory, todayHistory].slice(-30), // keep last 30 days
-        })
+        if (uploads.length === 1) unlock('pioneer');
+        if (record.category === 'creative') { unlock('creator'); xpGained += 50; }
+        if (record.category === 'study')    { unlock('scholar'); xpGained += 50; }
+        if (uploads.length >= 5)  unlock('archivist');
+        if (uploads.length >= 20) unlock('vault');
 
-        get().addXP(xpGained)
-        get().checkAndCompleteQuests()
-        get().checkAndUnlockBadges()
+        set({ badges, xp: state.xp + xpGained });
+        get().updateStreak();
       },
 
-      addXP: (amount: number) => {
-        const state = get()
-        const newXP = state.totalXP + amount
-        const xpForNextLevel = getXPForLevel(state.level)
-        const newLevel = newXP >= xpForNextLevel ? state.level + 1 : state.level
+      updateStreak: () => {
+        const state = get();
+        const today = new Date().toDateString();
+        if (state.lastUploadDate === today) return;
 
-        set({
-          totalXP: newXP,
-          weeklyXP: state.weeklyXP + amount,
-          level: newLevel,
-        })
-      },
+        const yesterday = new Date(Date.now() - 86400000).toDateString();
+        const newStreak = state.lastUploadDate === yesterday ? state.streak + 1 : 1;
 
-      checkAndCompleteQuests: () => {
-        const state = get()
-        const today = new Date().toDateString()
-        const newCompletions: QuestProgress[] = []
+        let xpGained = newStreak * 10; // streak bonus XP
 
-        for (const quest of QUESTS) {
-          const alreadyDone = state.todayQuestProgress.some(p => p.questId === quest.id)
-          if (alreadyDone) continue
-
-          const currentValue = state[quest.progressKey as keyof GameState] as number ?? 0
-          if (currentValue >= quest.target) {
-            newCompletions.push({
-              questId: quest.id,
-              completedAt: new Date().toISOString(),
-              xpEarned: quest.xpReward,
-            })
-            get().addXP(quest.xpReward)
-          }
+        // Unlock consistent badge at 7-day streak
+        let badges = state.badges;
+        if (newStreak >= 7) {
+          badges = badges.map((b) =>
+            b.id === 'consistent' && !b.unlockedAt ? { ...b, unlockedAt: Date.now() } : b
+          );
         }
 
-        if (newCompletions.length > 0) {
-          set({
-            todayQuestProgress: [...state.todayQuestProgress, ...newCompletions],
-            questsCompleted: state.questsCompleted + newCompletions.length,
-          })
-        }
+        set({ streak: newStreak, lastUploadDate: today, badges, xp: state.xp + xpGained });
       },
 
-      checkAndUnlockBadges: () => {
-        const state = get()
-        const newBadges: Badge[] = []
-
-        for (const badge of BADGES) {
-          const alreadyUnlocked = state.unlockedBadges.some(b => b.id === badge.id)
-          if (alreadyUnlocked) continue
-          if (badge.condition(state)) {
-            newBadges.push({ ...badge, unlockedAt: new Date().toISOString() })
-          }
-        }
-
-        if (newBadges.length > 0) {
-          set({ unlockedBadges: [...state.unlockedBadges, ...newBadges] })
-        }
-      },
-
-      resetDailyState: () => {
-        set({ todayUploads: 0, todayImages: 0, todayQuestProgress: [] })
-      },
+      unlockBadge: (badgeId) =>
+        set((state) => ({
+          badges: state.badges.map((b) =>
+            b.id === badgeId && !b.unlockedAt ? { ...b, unlockedAt: Date.now() } : b
+          ),
+        })),
     }),
-    {
-      name: 'shelby-grow-game',
-      // Only persist what's needed — don't persist derived UI state
-      partialize: (state) => ({
-        streak: state.streak,
-        bestStreak: state.bestStreak,
-        lastUploadDate: state.lastUploadDate,
-        totalFiles: state.totalFiles,
-        totalXP: state.totalXP,
-        level: state.level,
-        weeklyUploads: state.weeklyUploads,
-        weeklyXP: state.weeklyXP,
-        todayUploads: state.todayUploads,
-        todayImages: state.todayImages,
-        questsCompleted: state.questsCompleted,
-        gardenAge: state.gardenAge,
-        streakHistory: state.streakHistory,
-        todayQuestProgress: state.todayQuestProgress,
-        unlockedBadges: state.unlockedBadges,
-      }),
-    }
+    { name: 'shelby-grow-game-v3' }
   )
-)
+);
